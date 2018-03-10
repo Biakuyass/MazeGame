@@ -1,0 +1,279 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class Cell
+{
+    protected int y;
+    protected int x;
+    public bool on;
+    private GameObject cube;
+
+    public Cell(int y, int x, int scale) {
+        this.y = y;
+        this.x = x;
+        this.on = false;
+        this.cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        this.cube.GetComponent<Renderer>().material.color = new Color(.7f, 0.3f, 0f, 1f);
+        cube.transform.localScale = new Vector3(scale, 4, scale);
+        cube.transform.position = new Vector3(x*scale,0,y*scale);
+        this.cube.SetActive(false);
+    }
+
+    public void TurnOn() {
+        this.on = true;
+        this.cube.SetActive(true);
+    }
+
+    public void TurnOff() {
+        this.on = false;
+        this.cube.SetActive(false);
+    }
+
+    public void MakeMarker() {
+        this.on = false;
+        this.cube.SetActive(true);
+        this.cube.GetComponent<Renderer>().material.color = new Color(0f, 1f, 0f, 0.5f);
+        //this.cube.transform.localScale = new Vector3(1f,1f,1f);
+        this.cube.GetComponent<BoxCollider>().enabled = false;
+    }
+
+    public void NameHelper() {
+        this.cube.SetActive(true);
+        this.cube.GetComponent<Renderer>().material.color = new Color(0f, 1f, 0f, 0.5f);
+    }
+}
+
+public class Maze : MonoBehaviour {
+    public Rigidbody player;
+
+    public int height;
+    public int width;
+    public int scale;
+    public List<List<Cell>> grid;
+    public List<List<int>> locationGrid;
+
+
+    public float updateGridDelay;
+    public float lastUpdate;
+
+
+
+    List<List<int>> GetNeighbors(List<int> coordinates) {
+        int coordY = coordinates[0];
+        int coordX = coordinates[1];
+        List<List<int>> neighbors = new List<List<int>>();
+        for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+                if (coordY + y >= 0 && coordY + y < height
+                        && coordX + x >= 0 && coordX + x < width
+                        && (coordY + y != 0 || coordX + x != 0)) {
+                    neighbors.Add(new List<int>() {coordY+y, coordX+x});
+                }
+            }
+        }
+        return neighbors;
+    }
+
+    int GetNumLivingNeighbors(List<int> coordinates) {
+        int count = 0;
+        foreach (List<int> n in GetNeighbors(coordinates)) {
+            if (grid[n[0]][n[1]].on) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    void UpdateGrid() {
+        List<List<bool>> tempGrid = new List<List<bool>>();
+        for (int y = 0; y < height; y++) {
+            tempGrid.Add(new List<bool>());
+            for (int x = 0; x < width; x++) {
+                tempGrid[y].Add(grid[y][x].on);
+                int lN = GetNumLivingNeighbors(new List<int>() { y, x });
+                if (lN == 3) {
+                    tempGrid[y][x] = true;
+                } else if (lN < 1 || lN > 5) {
+                    tempGrid[y][x] = false;
+                }
+            }
+        }
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (grid[y][x].on && !tempGrid[y][x]) {
+                    grid[y][x].TurnOff();
+                }
+                if (!grid[y][x].on && tempGrid[y][x] && !(locationGrid[y][x] > 0)) {
+                    grid[y][x].TurnOn();
+                }
+            }
+        }
+    }
+
+    public void BreakGrid() {
+        print(player.transform.position);
+        print(player.transform.position + player.transform.forward);
+        Vector3 targetPos = player.transform.position + player.transform.forward;
+        grid[((int)targetPos.z + (scale/2)) / scale][((int)targetPos.x + (scale/2)) / scale].TurnOff();
+    }
+
+ 
+
+    // Use this for initialization
+    void Start () {
+        updateGridDelay = 1f;
+        lastUpdate = 0f;
+        
+        height = 32;
+        width = 32;
+        scale = 4;
+
+        player.transform.position = new Vector3(width/2 * scale, 0, height/2 * scale);
+
+        /*locationGrid = new List<List<int>>();
+        for (int y = 0; y < height; y++) {
+            locationGrid.Add(new List<int>());
+            for (int x = 0; x < width; x++) {
+                locationGrid[y].Add(0);
+            }
+        }
+        foreach (List<int> n in GetNeighbors(new List<int>() { height / 2, width / 2 })) {
+            locationGrid[n[0]][n[1]] = 1;
+        }*/
+        /*locationGrid = new List<List<int>>()
+        {
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        };*/
+        locationGrid = new List<List<int>>()
+        {
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+	    new List<int>() {0,0,1,1,1,0,0,1,0,0,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,1,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,1,0,0,1,1,1,0,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,1,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,1,1,0,0,1,0,1,0,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,1,0,0,0,0},
+            new List<int>() {0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,1,1,1,0,1,1,1,0,1,0,1,0,0,0,0},
+            new List<int>() {0,0,1,0,1,0,1,0,1,0,1,0,0,1,0,0,0,1,0,1,0,1,0,1,0,1,0,1,0,0,0,0},
+            new List<int>() {0,0,1,0,0,0,1,0,1,1,1,0,0,1,0,0,0,1,0,1,0,1,0,1,0,1,0,1,0,0,0,0},
+            new List<int>() {0,0,1,0,0,0,1,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,1,0,0,0,1,0,1,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,0,0,1,0,0,0,1,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,1,0,1,0,1,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,1,0,1,0,1,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,1,0,0,1,0,1,0,1,0,1,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,0,1,0,0,0},
+            new List<int>() {0,0,0,0,1,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0,1,0,1,0,0},
+            new List<int>() {0,0,0,0,1,0,0,1,1,1,0,1,1,1,0,1,1,1,0,0,1,0,0,1,0,0,0,1,1,1,0,0},
+            new List<int>() {0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,1,0,0,1,0,0,0,1,0,1,0,0},
+            new List<int>() {0,0,0,1,1,0,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,0,1,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            new List<int>() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        };
+        locationGrid.Reverse();
+
+        grid = new List<List<Cell>>();
+        for (int y = 0; y < height; y++) {
+            grid.Add(new List<Cell>());
+            for (int x = 0; x < width; x++) {
+                Cell c = new Cell(y,x,scale);
+                grid[y].Add(c);
+            }
+        }
+        //int u = height/2 - height/4;
+        //int d = height/2 + height/4;
+        //int l = width/2 - width/4;
+        //int r = width/2 + width/4;
+        int u = 0;
+        int d = height;
+        int l = 0;
+        int r = width;
+
+        for (int y = u; y < d; y++) {
+            for (int x = l; x < r; x++) {
+                if (Random.Range(0,2) == 1 && !(locationGrid[y][x] > 0)) {
+                    grid[y][x].TurnOn();
+                }
+            }
+        }
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (locationGrid[y][x] > 0) {
+                    grid[y][x].NameHelper();
+                }
+            }
+        }
+
+        /*for (int i = 0; i < 80; i++) {
+            UpdateGrid();
+        }*/
+
+        //locationGrid[height/2-1][width/2] = 2;
+        //grid[height/2-1][width/2].MakeMarker();
+        //print("testing" + (height / 2 - 1).ToString() + " " + (width / 2).ToString());
+    }
+	
+	// Update is called once per frame
+	void Update () {
+        int playerY = ((int)player.transform.position.z+(scale/2)) / scale;
+        int playerX = ((int)player.transform.position.x+(scale/2)) / scale;
+        //if (locationGrid[playerY][playerX] == 2){
+        //    SceneManager.LoadScene("JakesPuzzle");
+        //}
+	}
+
+    void FixedUpdate()
+    {
+        int playerY = ((int)player.transform.position.z +(scale/2)) / scale;
+        int playerX = ((int)player.transform.position.x +(scale/2)) / scale;
+        print("pGridY" + playerY.ToString() + "pGridX" + playerX.ToString());
+
+        if ((Time.timeSinceLevelLoad - lastUpdate) > updateGridDelay) {
+            lastUpdate = Time.timeSinceLevelLoad;
+            UpdateGrid();
+        }
+    }
+}

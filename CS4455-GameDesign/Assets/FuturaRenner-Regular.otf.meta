@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 7dda31bab756f4636b31e4b0872e6b94
+timeCreated: 1510090229
+licenseType: Free
+TrueTypeFontImporter:
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: FuturaRenner
+  fontNames:
+  - FuturaRenner
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
